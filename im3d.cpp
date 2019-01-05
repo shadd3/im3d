@@ -1158,9 +1158,12 @@ bool Im3d::GizmoSelectionRectangle(Id _id, float _selection_[4 * 3])
 			storedViewNormal = viewNormal;
 		}
 	}
-	ctx.popMatrix();
 
 	DrawQuad(handlesCorner[0].drawAt, handlesCorner[1].drawAt, handlesCorner[2].drawAt, handlesCorner[3].drawAt);
+
+	ctx.popMatrix();
+
+	
 
 	ctx.popEnableSorting();
 	ctx.popId();
