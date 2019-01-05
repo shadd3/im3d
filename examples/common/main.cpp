@@ -33,6 +33,7 @@ int main(int, char**)
 		if (ImGui::TreeNode("Unified Gizmo")) {
 		 // Unified gizmo operates directly on a 4x4 matrix using the context-global gizmo modes.
 			static Im3d::Mat4 transform(1.0f);
+			static float selection[4 * 3]{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
 
 		 // Context-global gizmo modes are set via actions in the AppData::m_keyDown but could also be modified via a GUI as follows:
 			int gizmoMode = (int)Im3d::GetContext().m_gizmoMode;
@@ -43,10 +44,12 @@ int main(int, char**)
 			ImGui::RadioButton("Rotate (Ctrl+R)", &gizmoMode, Im3d::GizmoMode_Rotation);
 			ImGui::SameLine();
 			ImGui::RadioButton("Scale (Ctrl+S)", &gizmoMode, Im3d::GizmoMode_Scale);
+			ImGui::SameLine();
+			ImGui::RadioButton("Selection (Ctrl+E)", &gizmoMode, Im3d::GizmoMode_SelectionRectangle);
 			Im3d::GetContext().m_gizmoMode = (Im3d::GizmoMode)gizmoMode;
 	
 		 // The ID passed to Gizmo() should be unique during a frame - to create gizmos in a loop use PushId()/PopId().
-			if (Im3d::Gizmo("GizmoUnified", transform)) {
+			if (Im3d::Gizmo("GizmoUnified", transform, selection)) {
 			 // if Gizmo() returns true, the transform was modified
 				switch (Im3d::GetContext().m_gizmoMode) {
 					case Im3d::GizmoMode_Translation: {
@@ -62,6 +65,13 @@ int main(int, char**)
 					case Im3d::GizmoMode_Scale: {
 						Im3d::Vec3 scale = transform.getScale();
 						ImGui::Text("Scale: %.3f, %.3f, %.3f", scale.x, scale.y, scale.z);
+						break;
+					}
+					case Im3d::GizmoMode_SelectionRectangle: {
+						ImGui::Text("Selection: %.3f, %.3f, %.3f", selection[0], selection[1], selection[2]);
+						ImGui::Text("Selection: %.3f, %.3f, %.3f", selection[3], selection[4], selection[5]);
+						ImGui::Text("Selection: %.3f, %.3f, %.3f", selection[6], selection[7], selection[8]);
+						ImGui::Text("Selection: %.3f, %.3f, %.3f", selection[9], selection[10], selection[11]);
 						break;
 					}
 					default: break;
@@ -82,6 +92,7 @@ int main(int, char**)
 			static Im3d::Vec3 translation(0.0f);
 			static Im3d::Mat3 rotation(1.0f);
 			static Im3d::Vec3 scale(1.0f);
+			static float selection[4 * 3]{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
 
 		 // The separate Gizmo*() functions require the transformation to be pushed on the matrix stack to correctly handle local gizmos.
 			Im3d::PushMatrix(Im3d::Mat4(translation, rotation, scale));
@@ -94,6 +105,8 @@ int main(int, char**)
 			ImGui::RadioButton("Rotate (Ctrl+R)", &gizmoMode, Im3d::GizmoMode_Rotation);
 			ImGui::SameLine();
 			ImGui::RadioButton("Scale (Ctrl+S)", &gizmoMode, Im3d::GizmoMode_Scale);
+			ImGui::SameLine();
+			ImGui::RadioButton("Selectione (Ctrl+E)", &gizmoMode, Im3d::GizmoMode_SelectionRectangle);
 			Im3d::GetContext().m_gizmoMode = (Im3d::GizmoMode)gizmoMode;
 
 			switch (Im3d::GetContext().m_gizmoMode) {
@@ -115,6 +128,15 @@ int main(int, char**)
 					}
 					break;
 				}
+				case Im3d::GizmoMode_SelectionRectangle: {
+					if (Im3d::GizmoSelectionRectangle("GizmoSelectionRectangle", selection)) {
+						ImGui::Text("Selection: %.3f, %.3f, %.3f", selection[0], selection[1], selection[2]);
+						ImGui::Text("Selection: %.3f, %.3f, %.3f", selection[3], selection[4], selection[5]);
+						ImGui::Text("Selection: %.3f, %.3f, %.3f", selection[6], selection[7], selection[8]);
+						ImGui::Text("Selection: %.3f, %.3f, %.3f", selection[9], selection[10], selection[11]);
+					}
+					break;
+				}
 				default: break;
 			};
 
@@ -130,12 +152,14 @@ int main(int, char**)
 		 // It is often useful to modify a single node in a transformation hierarchy directly, which can be done as follows.
 		 // Note that scaling the parent is probably undesirable in these cases.
 			static Im3d::Mat4 parent(1.0f);
+			static float selection[4 * 3]{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
 			static Im3d::Mat4 child(Im3d::Vec3(0.0f, 1.0f, 0.0f), Im3d::Mat3(1.0f), Im3d::Vec3(0.5f));
 
-			Im3d::Gizmo("GizmoParent", parent); // modify parent directly
+			Im3d::Gizmo("GizmoParent", parent, selection); // modify parent directly
+			
 			
 			Im3d::Mat4 parentChild = parent * child; // modify the final world space transform
-			if (Im3d::Gizmo("GizmoChild", parentChild)) {
+			if (Im3d::Gizmo("GizmoChild", parentChild, selection)) {
 				child = Im3d::Inverse(parent) * parentChild; // extract the child transform if modified
 			}
 			
@@ -162,7 +186,9 @@ int main(int, char**)
 			Im3d::GetContext().m_gizmoHeightPixels = height;
 
 			static Im3d::Mat4 transform(1.0f);
-			Im3d::Gizmo("GizmoAppearance", transform);
+			static float selection[4 * 3] {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+
+			Im3d::Gizmo("GizmoAppearance", transform, selection);
 			Im3d::DrawTeapot(transform, example.m_camViewProj);
 
 			Im3d::GetContext().m_gizmoHeightPixels = storedHeight;
@@ -198,7 +224,9 @@ int main(int, char**)
 		 // Im3d provides functions to easily draw high order shapes - these don't strictly require a matrix to be pushed on
 		 // the stack (although this is supported, as below).
 			static Im3d::Mat4 transform(1.0f);
-			Im3d::Gizmo("ShapeGizmo", transform);
+			static float selection[4 * 3]{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+
+			Im3d::Gizmo("ShapeGizmo", transform, selection);
 
 			enum Shape {
 				Shape_Quad,

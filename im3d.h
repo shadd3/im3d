@@ -162,16 +162,18 @@ Id    GetLayerId();
 bool  GizmoTranslation(const char* _id, float _translation_[3], bool _local = false);
 bool  GizmoRotation(const char* _id, float _rotation_[3*3], bool _local = false);
 bool  GizmoScale(const char* _id, float _scale_[3]); // local scale only
+bool  GizmoSelectionRectangle(const char* _id, float _selection_[4*3]);
 // Unified gizmo, selects local/global, translation/rotation/scale based on the context-global gizmo modes. Return true if the gizmo is active.
-bool  Gizmo(const char* _id, float _translation_[3], float _rotation_[3*3], float _scale_[3]); // any of _translation_/_rotation_/_scale_ may be null.
-bool  Gizmo(const char* _id, float _transform_[4*4]);
+bool  Gizmo(const char* _id, float _translation_[3], float _rotation_[3*3], float _scale_[3], float _selection_[4*3]); // any of _translation_/_rotation_/_scale_ may be null.
+bool  Gizmo(const char* _id, float _transform_[4*4], float _selection_[4*3]);
 
 // Gizmo* overloads which take an Id directly. In some cases the app may want to call MakeId() separately, usually to change the gizmo appearance if hot/active.
 bool  GizmoTranslation(Id _id, float _translation_[3], bool _local = false);
 bool  GizmoRotation(Id _id, float _rotation_[3*3], bool _local = false);
 bool  GizmoScale(Id _id, float _scale_[3]);
-bool  Gizmo(Id _id, float _transform_[4*4]);
-bool  Gizmo(Id _id, float _translation_[3], float _rotation_[3*3], float _scale_[3]);
+bool  GizmoSelectionRectangle(Id _id, float _selection_[4*3]);
+bool  Gizmo(Id _id, float _transform_[4*4], float _selection_[4*3]);
+bool  Gizmo(Id _id, float _translation_[3], float _rotation_[3*3], float _scale_[3], float _selection_[4*3]);
 
 // Visibility tests. The application must set a culling frustum via AppData.
 bool  IsVisible(const Vec3& _origin, float _radius); // sphere
@@ -506,7 +508,8 @@ enum GizmoMode
 {
 	GizmoMode_Translation,
 	GizmoMode_Rotation,
-	GizmoMode_Scale
+	GizmoMode_Scale,
+	GizmoMode_SelectionRectangle
 };
 
 // Context stores all relevant state - main interface affects the context currently bound via SetCurrentContext().
@@ -758,8 +761,9 @@ inline Id    GetLayerId()                                                    { r
 inline bool GizmoTranslation(const char* _id, float _translation_[3], bool _local)                   { return GizmoTranslation(MakeId(_id), _translation_, _local);   }
 inline bool GizmoRotation(const char* _id, float _rotation_[3*3], bool _local)                       { return GizmoRotation(MakeId(_id), _rotation_, _local);         }
 inline bool GizmoScale(const char* _id, float _scale_[3])                                            { return GizmoScale(MakeId(_id), _scale_);                       }
-inline bool Gizmo(const char* _id, float _translation_[3], float _rotation_[3*3], float _scale_[3])  { return Gizmo(MakeId(_id), _translation_, _rotation_, _scale_); }
-inline bool Gizmo(const char* _id, float _transform_[4*4])                                           { return Gizmo(MakeId(_id), _transform_);                        }
+inline bool GizmoSelectionRectangle(const char* _id, float _selection_[4*3])						 { return GizmoSelectionRectangle(MakeId(_id), _selection_); }
+inline bool Gizmo(const char* _id, float _translation_[3], float _rotation_[3*3], float _scale_[3], float _selection_[4*3])  { return Gizmo(MakeId(_id), _translation_, _rotation_, _scale_, _selection_); }
+inline bool Gizmo(const char* _id, float _transform_[4*4], float _selection_[4*3])                                           { return Gizmo(MakeId(_id), _transform_, _selection_);                        }
 
 inline bool IsVisible(const Vec3& _origin, float _radius)                    { return GetContext().isVisible(_origin, _radius); }
 inline bool IsVisible(const Vec3& _min, const Vec3& _max)                    { return GetContext().isVisible(_min, _max);       }
