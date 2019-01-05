@@ -33,7 +33,7 @@ int main(int, char**)
 		if (ImGui::TreeNode("Unified Gizmo")) {
 		 // Unified gizmo operates directly on a 4x4 matrix using the context-global gizmo modes.
 			static Im3d::Mat4 transform(1.0f);
-			static float selection[4 * 3]{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+			static float selection[4 * 3]{ -0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f, 0.5f, 0.5f, 0.0f, -0.5f, 0.5f, 0.0f };
 
 		 // Context-global gizmo modes are set via actions in the AppData::m_keyDown but could also be modified via a GUI as follows:
 			int gizmoMode = (int)Im3d::GetContext().m_gizmoMode;
@@ -92,7 +92,7 @@ int main(int, char**)
 			static Im3d::Vec3 translation(0.0f);
 			static Im3d::Mat3 rotation(1.0f);
 			static Im3d::Vec3 scale(1.0f);
-			static float selection[4 * 3]{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+			static float selection[4 * 3]{ -0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f, 0.5f, 0.5f, 0.0f, -0.5f, 0.5f, 0.0f };
 
 		 // The separate Gizmo*() functions require the transformation to be pushed on the matrix stack to correctly handle local gizmos.
 			Im3d::PushMatrix(Im3d::Mat4(translation, rotation, scale));
@@ -152,7 +152,7 @@ int main(int, char**)
 		 // It is often useful to modify a single node in a transformation hierarchy directly, which can be done as follows.
 		 // Note that scaling the parent is probably undesirable in these cases.
 			static Im3d::Mat4 parent(1.0f);
-			static float selection[4 * 3]{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+			static float selection[4 * 3]{ -0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f, 0.5f, 0.5f, 0.0f, -0.5f, 0.5f, 0.0f };
 			static Im3d::Mat4 child(Im3d::Vec3(0.0f, 1.0f, 0.0f), Im3d::Mat3(1.0f), Im3d::Vec3(0.5f));
 
 			Im3d::Gizmo("GizmoParent", parent, selection); // modify parent directly
@@ -186,7 +186,7 @@ int main(int, char**)
 			Im3d::GetContext().m_gizmoHeightPixels = height;
 
 			static Im3d::Mat4 transform(1.0f);
-			static float selection[4 * 3] {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+			static float selection[4 * 3]{ -0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f, 0.5f, 0.5f, 0.0f, -0.5f, 0.5f, 0.0f };
 
 			Im3d::Gizmo("GizmoAppearance", transform, selection);
 			Im3d::DrawTeapot(transform, example.m_camViewProj);
@@ -224,7 +224,7 @@ int main(int, char**)
 		 // Im3d provides functions to easily draw high order shapes - these don't strictly require a matrix to be pushed on
 		 // the stack (although this is supported, as below).
 			static Im3d::Mat4 transform(1.0f);
-			static float selection[4 * 3]{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+			static float selection[4 * 3]{ -0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f, 0.5f, 0.5f, 0.0f, -0.5f, 0.5f, 0.0f };
 
 			Im3d::Gizmo("ShapeGizmo", transform, selection);
 

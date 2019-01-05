@@ -1002,10 +1002,29 @@ bool Im3d::GizmoSelectionRectangle(Id _id, float _selection_[4*3])
 	Context& ctx = GetContext();
 
 	bool ret = false;
-	Vec3* outVec3 = (Vec3*)_selection_;
-	Vec3 drawAt = *outVec3;
+	Vec3* outVec3[] = {
+		(Vec3*)&_selection_[0],
+		(Vec3*)&_selection_[3],
+		(Vec3*)&_selection_[6],
+		(Vec3*)&_selection_[9]
+	};
 
-	float worldHeight = ctx.pixelsToWorldSize(drawAt, ctx.m_gizmoHeightPixels);
+	Vec3 drawAt[] =
+	{
+		*outVec3[0],
+		*outVec3[1],
+		*outVec3[2],
+		*outVec3[3]
+	};
+
+	float worldHeight[] =
+	{
+		ctx.pixelsToWorldSize(drawAt[0], ctx.m_gizmoHeightPixels),
+		ctx.pixelsToWorldSize(drawAt[1], ctx.m_gizmoHeightPixels),
+		ctx.pixelsToWorldSize(drawAt[2], ctx.m_gizmoHeightPixels),
+		ctx.pixelsToWorldSize(drawAt[3], ctx.m_gizmoHeightPixels),
+	};
+
 #if IM3D_CULL_GIZMOS
 	if (!ctx.isVisible(drawAt, worldHeight)) {
 		return false;
@@ -1014,105 +1033,80 @@ bool Im3d::GizmoSelectionRectangle(Id _id, float _selection_[4*3])
 
 	ctx.pushId(_id);
 	ctx.m_appId = _id;
-
-
-	float planeSize = worldHeight * (0.5f * 0.5f);
-	float planeOffset = worldHeight * 0.5f;
-	float worldSize = ctx.pixelsToWorldSize(drawAt, ctx.m_gizmoSizePixels);
+	
+	float planeSize[] =
+	{
+		worldHeight[0] * (0.5f * 0.5f),
+		worldHeight[1] * (0.5f * 0.5f),
+		worldHeight[2] * (0.5f * 0.5f),
+		worldHeight[3] * (0.5f * 0.5f),
+	};
 
 	struct AxisG { Id m_id; Vec3 m_axis; Color m_color; };
-	AxisG axes[] = {
-		{ MakeId("axisX"), Vec3(1.0f, 0.0f, 0.0f), Color_Red },
-		{ MakeId("axisY"), Vec3(0.0f, 1.0f, 0.0f), Color_Green },
-		{ MakeId("axisZ"), Vec3(0.0f, 0.0f, 1.0f), Color_Blue }
+	AxisG axes[] = 
+	{
+		{ MakeId("axisZ_0"), Vec3(0.0f, 0.0f, 1.0f), Color_Blue },
+		{ MakeId("axisZ_1"), Vec3(0.0f, 0.0f, 1.0f), Color_Blue },
+		{ MakeId("axisZ_2"), Vec3(0.0f, 0.0f, 1.0f), Color_Blue },
+		{ MakeId("axisZ_3"), Vec3(0.0f, 0.0f, 1.0f), Color_Blue }
 	};
 	struct PlaneG { Id m_id; Vec3 m_origin; };
-	PlaneG planes[] = {
-		{ MakeId("planeYZ"), Vec3(0.0f, planeOffset, planeOffset) },
-		{ MakeId("planeXZ"), Vec3(planeOffset, 0.0f, planeOffset) },
-		{ MakeId("planeXY"), Vec3(planeOffset, planeOffset, 0.0f) },
-		{ MakeId("planeV"),  Vec3(0.0f, 0.0f, 0.0f) }
+	PlaneG planes[] = 
+	{
+		{ MakeId("planeXY_0"), Vec3(0.0f, 0.0f, 0.0f) },
+		{ MakeId("planeXY_1"), Vec3(0.0f, 0.0f, 0.0f) },
+		{ MakeId("planeXY_2"), Vec3(0.0f, 0.0f, 0.0f) },
+		{ MakeId("planeXY_3"), Vec3(0.0f, 0.0f, 0.0f) }
 	};
 
-	// invert axes if viewing from behind
+	size_t const planeCount = sizeof(planes) / sizeof(planes[0]);
+
 	const AppData& appData = ctx.getAppData();
-	/*Vec3 viewDir = appData.m_viewOrigin - *outVec3;
-	for (int i = 0; i < 3; ++i) {
-	if (Dot(axes[i].m_axis, viewDir) < 0.0f) {
-	axes[i].m_axis = -axes[i].m_axis;
-	for (int j = 0; j < 3; ++j) {
-	planes[j].m_origin[i] = -planes[j].m_origin[i];
-	}
-	}
-	}*/
 
-	Sphere boundingSphere(*outVec3, worldHeight * 1.5f); // expand the bs to catch the planar subgizmos
-	Ray ray(appData.m_cursorRayOrigin, appData.m_cursorRayDirection);
-	bool intersects = ctx.m_appHotId == ctx.m_appId || Intersects(ray, boundingSphere);
-
-	// planes
+	bool intersects = ctx.m_appHotId == ctx.m_appId;
+	if (intersects == false)
+	{
+		for (size_t i=0;i<sizeof(drawAt)/sizeof(drawAt[0]);++i)
+		{
+			Sphere boundingSphere(drawAt[i], worldHeight[i] * 1.5f); // expand the bs to catch the planar subgizmos
+			Ray ray(appData.m_cursorRayOrigin, appData.m_cursorRayDirection);
+			intersects = intersects || Intersects(ray, boundingSphere);
+		}
+	}
+			
 	ctx.pushEnableSorting(true);
+	
+	// planes
 	{
 		ctx.pushMatrix(Mat4(1.0f));
-		for (int i = 0; i < 3; ++i) {
+		for (int i = 0; i < planeCount; ++i) 
+		{
 			const PlaneG& plane = planes[i];
-			ctx.gizmoPlaneTranslation_Draw(plane.m_id, drawAt + plane.m_origin, axes[i].m_axis, planeSize, Color_GizmoHighlight);
-			if (intersects) {
-				ret |= ctx.gizmoPlaneTranslation_Behavior(plane.m_id, drawAt + plane.m_origin, axes[i].m_axis, appData.m_snapTranslation, planeSize, outVec3);
+			ctx.gizmoPlaneTranslation_Draw(plane.m_id, drawAt[i] + plane.m_origin, axes[i].m_axis, planeSize[i], Color_GizmoHighlight);
+			if (intersects) 
+			{
+				ret |= ctx.gizmoPlaneTranslation_Behavior(plane.m_id, drawAt[i] + plane.m_origin, axes[i].m_axis, appData.m_snapTranslation, planeSize[i], outVec3[i]);
 			}
 		}
 		ctx.popMatrix();
 	}
 
 	ctx.pushMatrix(Mat4(1.0f));
-
-	if (intersects) {
+	if (intersects) 
+	{
 		// view plane (store the normal when the gizmo becomes active)
 		Id currentId = ctx.m_activeId;
-		Vec3& storedViewNormal = *((Vec3*)ctx.m_gizmoStateMat3.m);
-		Vec3 viewNormal;
-		if (planes[3].m_id == ctx.m_activeId) {
-			viewNormal = storedViewNormal;
-		}
-		else {
-			viewNormal = ctx.getAppData().m_viewDirection;
-		}
-		ret |= ctx.gizmoPlaneTranslation_Behavior(planes[3].m_id, drawAt, viewNormal, appData.m_snapTranslation, worldSize, outVec3);
-		if (currentId != ctx.m_activeId) {
+		if (currentId != ctx.m_activeId) 
+		{
 			// gizmo became active, store the view normal
+			Vec3& storedViewNormal = *((Vec3*)ctx.m_gizmoStateMat3.m);
+			Vec3 const &viewNormal = ctx.getAppData().m_viewDirection;;
 			storedViewNormal = viewNormal;
-		}
-
-		// highlight axes if the corresponding plane is hot
-		if (planes[0].m_id == ctx.m_hotId) { // YZ
-			axes[1].m_color = axes[2].m_color = Color_GizmoHighlight;
-		}
-		else if (planes[1].m_id == ctx.m_hotId) { // XZ
-			axes[0].m_color = axes[2].m_color = Color_GizmoHighlight;
-		}
-		else if (planes[2].m_id == ctx.m_hotId) { // XY
-			axes[0].m_color = axes[1].m_color = Color_GizmoHighlight;
-		}
-		else if (planes[3].m_id == ctx.m_hotId) {
-			axes[0].m_color = axes[1].m_color = axes[2].m_color = Color_GizmoHighlight;
-		}
-	}
-	// draw the view plane handle
-	ctx.begin(PrimitiveMode_Points);
-	ctx.vertex(drawAt, ctx.m_gizmoSizePixels * 2.0f, planes[3].m_id == ctx.m_hotId ? Color_GizmoHighlight : Color_White);
-	ctx.end();
-
-	// axes
-	for (int i = 0; i < 3; ++i) {
-		AxisG& axis = axes[i];
-		ctx.gizmoAxisTranslation_Draw(axis.m_id, drawAt, axis.m_axis, worldHeight, worldSize, axis.m_color);
-		if (intersects) {
-			ret |= ctx.gizmoAxisTranslation_Behavior(axis.m_id, drawAt, axis.m_axis, appData.m_snapTranslation, worldHeight, worldSize, outVec3);
 		}
 	}
 	ctx.popMatrix();
-	ctx.popEnableSorting();
 
+	ctx.popEnableSorting();
 	ctx.popId();
 
 	return ret;
