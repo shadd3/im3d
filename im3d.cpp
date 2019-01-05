@@ -1024,61 +1024,102 @@ bool Im3d::GizmoSelectionRectangle(Id _id, float _selection_[4*3])
 			axe = _axe;
 			plane = _plane;
 		}
+
+
 	};
 
-	handle handles[4];
-	size_t const planeCount = sizeof(handles) / sizeof(handles[0]);
+	int culling = 0;
 
-	// handler setup
+	// handles corner setup
+	handle handlesCorner[4];
+	size_t const handlesCornerCount = sizeof(handlesCorner) / sizeof(handlesCorner[0]);
 	{
-		int culling = 0;
-		for (auto i = 0; i < planeCount; ++i)
+		for (auto i = 0; i < handlesCornerCount; ++i)
 		{
-			handles[i] = handle(ctx, *(Vec3*)&_selection_[i * 3], { MakeId(("axisZ" + std::to_string(i)).c_str()), Vec3(0.0f, 0.0f, 1.0f), Color_Blue }, { MakeId(("planeXY" + std::to_string(i)).c_str()), Vec3(0.0f, 0.0f, 0.0f) });
+			handlesCorner[i] = handle(ctx, *(Vec3*)&_selection_[i * 3], { MakeId(("caxisZ" + std::to_string(i)).c_str()), Vec3(0.0f, 0.0f, 1.0f), Color_Blue }, { MakeId(("cplaneXY" + std::to_string(i)).c_str()), Vec3(0.0f, 0.0f, 0.0f) });
 #if IM3D_CULL_GIZMOS
 			if (!ctx.isVisible(drawAt, worldHeight)) {
 				culling++;
 			}
 #endif
 		}
-
-		if (planeCount == culling)
-			return false;
 	}
+
+	// handles corner setup
+	handle handlesEdge[4];
+	size_t const handlesEdgeCount = sizeof(handlesEdge) / sizeof(handlesEdge[0]);
+	float selection_edge[4 * 3];
+
+	{
+		for (auto i = 0; i < handlesEdgeCount; ++i)
+		{
+			int const j0 = i * 3;
+			int const j1 = ((i+1)%handlesCornerCount) * 3;
+			selection_edge[j0 + 0] = (_selection_[j0 + 0] + _selection_[j1 + 0]) * 0.5f;
+			selection_edge[j0 + 1] = (_selection_[j0 + 1] + _selection_[j1 + 1]) * 0.5f;
+			selection_edge[j0 + 2] = (_selection_[j0 + 2] + _selection_[j1 + 2]) * 0.5f;
+
+			handlesEdge[i] = handle(ctx, *(Vec3*)&selection_edge[j0], { MakeId(("eaxisZ" + std::to_string(i)).c_str()), Vec3(0.0f, 0.0f, 1.0f), Color_Blue }, { MakeId(("eplaneXY" + std::to_string(i)).c_str()), Vec3(0.0f, 0.0f, 0.0f) });
+#if IM3D_CULL_GIZMOS
+			if (!ctx.isVisible(drawAt, worldHeight)) {
+				culling++;
+			}
+#endif
+		}
+	}
+	
+	if (handlesCornerCount + handlesEdgeCount == culling)
+		return false;
+	
 	ctx.pushId(_id);
 	ctx.m_appId = _id;
-
 	
-
 	// raycast test
 	bool intersects = ctx.m_appHotId == ctx.m_appId;
 	{
 		if (intersects == false)
 		{
-			for (size_t i = 0; i < planeCount; ++i)
+			auto rayCast = [&](handle *handles, size_t handleCount)
 			{
-				Sphere boundingSphere(handles[i].drawAt, handles[i].worldHeight * 1.5f); // expand the bs to catch the planar subgizmos
-				Ray ray(appData.m_cursorRayOrigin, appData.m_cursorRayDirection);
-				intersects = intersects || Intersects(ray, boundingSphere);
-			}
+				for (size_t i = 0; i < handleCount; ++i)
+				{
+					Sphere boundingSphere(handles[i].drawAt, handles[i].worldHeight * 1.5f); // expand the bs to catch the planar subgizmos
+					Ray ray(appData.m_cursorRayOrigin, appData.m_cursorRayDirection);
+					intersects = intersects || Intersects(ray, boundingSphere);
+				}
+			};
+		
+			rayCast(handlesCorner, handlesCornerCount);
+			rayCast(handlesEdge, handlesEdgeCount);
 		}
 	}
 			
 	ctx.pushEnableSorting(true);
-	
-	// planes
+
+	// common draw & behavior / edge & corner
+	auto drawNBehavior = [&](handle *handles, size_t handleCount)
 	{
 		ctx.pushMatrix(Mat4(1.0f));
-		for (int i = 0; i < planeCount; ++i) 
+		for (int i = 0; i < handleCount; ++i)
 		{
 			const PlaneG& plane = handles[i].plane;
 			ctx.gizmoPlaneTranslation_Draw(plane.m_id, handles[i].drawAt + plane.m_origin, handles[i].axe.m_axis, handles[i].planeSize, Color_GizmoHighlight);
-			if (intersects) 
+			if (intersects)
 			{
 				ret |= ctx.gizmoPlaneTranslation_Behavior(plane.m_id, handles[i].drawAt + plane.m_origin, handles[i].axe.m_axis, appData.m_snapTranslation, handles[i].planeSize, handles[i].outVec3);
 			}
 		}
 		ctx.popMatrix();
+	};
+		
+	// corners
+	{
+		drawNBehavior(handlesCorner, handlesCornerCount);
+	}
+
+	// edge
+	{
+		drawNBehavior(handlesEdge, handlesEdgeCount);
 	}
 
 	// context
@@ -1096,6 +1137,8 @@ bool Im3d::GizmoSelectionRectangle(Id _id, float _selection_[4*3])
 		}
 	}
 	ctx.popMatrix();
+	
+	DrawQuad(handlesCorner[0].drawAt, handlesCorner[1].drawAt, handlesCorner[2].drawAt, handlesCorner[3].drawAt);
 
 	ctx.popEnableSorting();
 	ctx.popId();
