@@ -20,7 +20,7 @@
 */
 #include "im3d.h"
 #include "im3d_math.h"
-
+#include <string>
 #include <cstdlib>
 #include <cstring>
 #include <cfloat>
@@ -1000,77 +1000,67 @@ bool Im3d::GizmoScale(Id _id, float _scale_[3])
 bool Im3d::GizmoSelectionRectangle(Id _id, float _selection_[4*3])
 {
 	Context& ctx = GetContext();
-
+	const AppData& appData = ctx.getAppData();
 	bool ret = false;
-	Vec3* outVec3[] = {
-		(Vec3*)&_selection_[0],
-		(Vec3*)&_selection_[3],
-		(Vec3*)&_selection_[6],
-		(Vec3*)&_selection_[9]
-	};
-
-	Vec3 drawAt[] =
+	
+	// handler struct
+	struct AxisG { Id m_id; Vec3 m_axis; Color m_color; };
+	struct PlaneG { Id m_id; Vec3 m_origin; };
+	struct handle
 	{
-		*outVec3[0],
-		*outVec3[1],
-		*outVec3[2],
-		*outVec3[3]
+		Vec3 *outVec3;
+		Vec3 drawAt;
+		float worldHeight;
+		float planeSize;
+		AxisG axe;
+		PlaneG plane;
+		handle() = default;
+		handle(Context& _ctx, Vec3 &_vec, AxisG _axe, PlaneG _plane)
+		{
+			outVec3 = &_vec;
+			drawAt = _vec;
+			worldHeight = _ctx.pixelsToWorldSize(_vec, _ctx.m_gizmoHeightPixels);
+			planeSize = worldHeight * (0.5f * 0.5f);
+			axe = _axe;
+			plane = _plane;
+		}
 	};
 
-	float worldHeight[] =
+	handle handles[4];
+	size_t const planeCount = sizeof(handles) / sizeof(handles[0]);
+
+	// handler setup
 	{
-		ctx.pixelsToWorldSize(drawAt[0], ctx.m_gizmoHeightPixels),
-		ctx.pixelsToWorldSize(drawAt[1], ctx.m_gizmoHeightPixels),
-		ctx.pixelsToWorldSize(drawAt[2], ctx.m_gizmoHeightPixels),
-		ctx.pixelsToWorldSize(drawAt[3], ctx.m_gizmoHeightPixels),
-	};
-
+		int culling = 0;
+		for (auto i = 0; i < planeCount; ++i)
+		{
+			handles[i] = handle(ctx, *(Vec3*)&_selection_[i * 3], { MakeId(("axisZ" + std::to_string(i)).c_str()), Vec3(0.0f, 0.0f, 1.0f), Color_Blue }, { MakeId(("planeXY" + std::to_string(i)).c_str()), Vec3(0.0f, 0.0f, 0.0f) });
 #if IM3D_CULL_GIZMOS
-	if (!ctx.isVisible(drawAt, worldHeight)) {
-		return false;
-	}
+			if (!ctx.isVisible(drawAt, worldHeight)) {
+				culling++;
+			}
 #endif
+		}
 
+		if (planeCount == culling)
+			return false;
+	}
 	ctx.pushId(_id);
 	ctx.m_appId = _id;
+
 	
-	float planeSize[] =
-	{
-		worldHeight[0] * (0.5f * 0.5f),
-		worldHeight[1] * (0.5f * 0.5f),
-		worldHeight[2] * (0.5f * 0.5f),
-		worldHeight[3] * (0.5f * 0.5f),
-	};
 
-	struct AxisG { Id m_id; Vec3 m_axis; Color m_color; };
-	AxisG axes[] = 
-	{
-		{ MakeId("axisZ_0"), Vec3(0.0f, 0.0f, 1.0f), Color_Blue },
-		{ MakeId("axisZ_1"), Vec3(0.0f, 0.0f, 1.0f), Color_Blue },
-		{ MakeId("axisZ_2"), Vec3(0.0f, 0.0f, 1.0f), Color_Blue },
-		{ MakeId("axisZ_3"), Vec3(0.0f, 0.0f, 1.0f), Color_Blue }
-	};
-	struct PlaneG { Id m_id; Vec3 m_origin; };
-	PlaneG planes[] = 
-	{
-		{ MakeId("planeXY_0"), Vec3(0.0f, 0.0f, 0.0f) },
-		{ MakeId("planeXY_1"), Vec3(0.0f, 0.0f, 0.0f) },
-		{ MakeId("planeXY_2"), Vec3(0.0f, 0.0f, 0.0f) },
-		{ MakeId("planeXY_3"), Vec3(0.0f, 0.0f, 0.0f) }
-	};
-
-	size_t const planeCount = sizeof(planes) / sizeof(planes[0]);
-
-	const AppData& appData = ctx.getAppData();
-
+	// raycast test
 	bool intersects = ctx.m_appHotId == ctx.m_appId;
-	if (intersects == false)
 	{
-		for (size_t i=0;i<sizeof(drawAt)/sizeof(drawAt[0]);++i)
+		if (intersects == false)
 		{
-			Sphere boundingSphere(drawAt[i], worldHeight[i] * 1.5f); // expand the bs to catch the planar subgizmos
-			Ray ray(appData.m_cursorRayOrigin, appData.m_cursorRayDirection);
-			intersects = intersects || Intersects(ray, boundingSphere);
+			for (size_t i = 0; i < planeCount; ++i)
+			{
+				Sphere boundingSphere(handles[i].drawAt, handles[i].worldHeight * 1.5f); // expand the bs to catch the planar subgizmos
+				Ray ray(appData.m_cursorRayOrigin, appData.m_cursorRayDirection);
+				intersects = intersects || Intersects(ray, boundingSphere);
+			}
 		}
 	}
 			
@@ -1081,16 +1071,17 @@ bool Im3d::GizmoSelectionRectangle(Id _id, float _selection_[4*3])
 		ctx.pushMatrix(Mat4(1.0f));
 		for (int i = 0; i < planeCount; ++i) 
 		{
-			const PlaneG& plane = planes[i];
-			ctx.gizmoPlaneTranslation_Draw(plane.m_id, drawAt[i] + plane.m_origin, axes[i].m_axis, planeSize[i], Color_GizmoHighlight);
+			const PlaneG& plane = handles[i].plane;
+			ctx.gizmoPlaneTranslation_Draw(plane.m_id, handles[i].drawAt + plane.m_origin, handles[i].axe.m_axis, handles[i].planeSize, Color_GizmoHighlight);
 			if (intersects) 
 			{
-				ret |= ctx.gizmoPlaneTranslation_Behavior(plane.m_id, drawAt[i] + plane.m_origin, axes[i].m_axis, appData.m_snapTranslation, planeSize[i], outVec3[i]);
+				ret |= ctx.gizmoPlaneTranslation_Behavior(plane.m_id, handles[i].drawAt + plane.m_origin, handles[i].axe.m_axis, appData.m_snapTranslation, handles[i].planeSize, handles[i].outVec3);
 			}
 		}
 		ctx.popMatrix();
 	}
 
+	// context
 	ctx.pushMatrix(Mat4(1.0f));
 	if (intersects) 
 	{
