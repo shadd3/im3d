@@ -1096,12 +1096,10 @@ bool Im3d::GizmoSelectionRectangle(Id _id, float _selection_[4 * 3])
 					intersects = intersects || Intersects(ray, boundingSphere);
 				}
 			};
-
 			rayCast(handlesCorner, handlesCornerCount);
 			rayCast(handlesEdge, handlesEdgeCount);
 		}
 	}
-
 	ctx.pushEnableSorting(true);
 
 	// common draw & behavior / edge & corner
@@ -1162,8 +1160,6 @@ bool Im3d::GizmoSelectionRectangle(Id _id, float _selection_[4 * 3])
 	DrawQuad(handlesCorner[0].drawAt, handlesCorner[1].drawAt, handlesCorner[2].drawAt, handlesCorner[3].drawAt);
 
 	ctx.popMatrix();
-
-	
 
 	ctx.popEnableSorting();
 	ctx.popId();
@@ -1409,6 +1405,8 @@ void Vector<T>::swap(Vector<T>& _a_, Vector<T>& _b_)
 	_b_.m_size = size;
 }
 
+namespace Im3d
+{
 template class Vector<bool>;
 template class Vector<char>;
 template class Vector<float>;
@@ -1416,7 +1414,7 @@ template class Vector<Id>;
 template class Vector<Mat4>;
 template class Vector<Color>;
 template class Vector<DrawList>;
-
+}
 /*******************************************************************************
 
 								 Context
@@ -1649,6 +1647,10 @@ void Context::reset()
 	}
 	else if (wasKeyPressed(Action_GizmoScale)) {
 		m_gizmoMode = GizmoMode_Scale;
+		resetId();
+	}
+	else if (wasKeyPressed(Action_GizmoSelectionRectangle)) {
+		m_gizmoMode = GizmoMode_SelectionRectangle;
 		resetId();
 	}
 	if (wasKeyPressed(Action_GizmoLocal)) {

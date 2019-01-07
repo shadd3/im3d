@@ -401,7 +401,7 @@ enum Key
 	Key_R,
 	Key_S,
 	Key_T,
-
+	Key_E,
 	Key_Count,
 
 // the following map keys -> 'action' states which may be more intuitive
@@ -410,7 +410,7 @@ enum Key
 	Action_GizmoRotation    = Key_R,
 	Action_GizmoScale       = Key_S,
 	Action_GizmoTranslation = Key_T,
-
+	Action_GizmoSelectionRectangle	= Key_E,
 	Action_Count
 };
 
